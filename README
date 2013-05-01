@@ -1,0 +1,128 @@
+Nume echipa: fANTastic Bombastic Four
+Membrii:
+Avram Marius
+Carapencea Constantin (capitan)
+Craciunescu Marian-Daniel
+Gucea Doru
+
+Mediu de dezvoltare folosit: Microsoft Visual Studio 2010, Eclipse
+Sistem de versionare de fisiere: GIT
+
+--------
+Etapa 1:
+--------
+In acesta etapa am realizat algoritmul care ghideaza furnicile catre sursele
+cele mai apropiate de hrana si algoritmul care ajuta la explorarea zonele
+nevizibile din harta.
+
+Colectarea mancarii:
+Pentru realizarea acestui lucru am creeat clasa FoodBFS. Aceasta contine un
+algoritm de tip Breath-First Search care porneste dinspre sursele de mancare
+vizibile de catre furnici. In cazul nostru graful pe care lucram este intreaga
+harta, nodurile sunt reprezentate de fiecare Square, iar arcele sunt drumuri de
+la un Square la altul. In cazul nostru avem doar arce intre patratele vecine.
+Crearea grafului are loc in etapa de initializare cand fiecarei liste de vecini
+(neighbors) din clasa Square i se atribuie patratelele adiacente. Complexitatea
+initializarii este proportionala cu numarul de patratele ale hartii.
+Un alt lucru pe care l-am facut a fost acela de a elimina legaturile grafului
+catre patratele care reprezinta apa de fiecare data cand un nou Square cu
+membrul isWater == true este descoperit. In acest mod am reusit sa evitam
+cautarea Breath-First in zone inaccesibile sau si mai rau sa dirijam furnica
+catre apa.
+
+Am ales aceasta abordare si nu invers (de la furnici catre mancare) pentru ca
+parintele Square-ului care reprezinta furnica reprezinta directia spre care se
+afla mancarea. In acest fel nu mai trebuie determinata directia catre care
+trebuie sa se indrepte furnica ci rezulta direct din cautarea pe graf. Cu
+fiecare noua runda o noua cautare este initializata si furnica este ghidata
+mai departe (un nou parinte al Squareului pe care se afla furnica este
+determinat). Metoda nextStep() din FoodBFS are acest rol de a determina pas
+cu pas urmatorul patrat.
+
+De asemenea cautarea se desfasoara in paralel pentru toate sursele de hrana
+vizibile pe harta si nu pentru fiecare pe rand. In aces mod evitam o alta
+problema: atribuirea colectarii de mancare unei furnici care este prea
+indeparta fata de o sursa (care a primis sarcina de a colecta mancarea) si
+care apoi este mai apropiata de o noua sursa de hrana care nu a fost
+analizata. Cautarea si mutarea furnicilor are loc in paralel in metoda
+grabFood() din clasa Bot.
+
+Complexitatea BFS-ului variaza in functie de variabila globala FOOD_RANGE.
+Acesta este egala cu numarul de patrate care se afla in raza de cautare a
+mancarii pentru fiecare bucata de mancare din raza vizibila care nu sunt
+marcate deja de alta cautare. 
+
+Explorarea hartii:
+Algoritmul de colectare a mancarii este destul de eficient si reuseste de la
+sine sa treaca peste limitele impuse de etapa 1 pentru cele patru harti. Insa
+deseori raman furnici neocupate care se vor misca random pe harta si deci vor
+fi ineficiente. De aceea am adaugat un algoritm de explorare. Acesta se
+bazeaza pe un sistem de rating. Fiecare patrat are un rating (membru
+invisibility) care creste cu fiecare runda daca patratul nu este vizibil sau
+se reinitializeaza cu zero daca patratul este vizibil pe harta pentru
+furnicile botului. Aceasta marcare a zonelor vizibile are o complexitate
+proportionala cu aria zonelor vizibile deoarece identificarea patratelelor
+vizibile se realizeaza tot prin cautare in latime. In acest mod vom putea sa
+ghidam furnicile de pe marginea zonei vizibile catre exterior. Vor ramane in
+continuare furnici care se vor misca random (cele din centrul zonei vizibile),
+insa expansiunea furnicilor este mult mai mare. 
+
+Metoda updateAreas() din State se ocupa de actualizarea ratingurilor. Aceasta
+apeleaza metoda searchVisibileSquares(). Aici se creeaza o lista de adiacenta.
+Pentru fiecare furnica vom face o lista cu patratele care sunt fix la marginea
+zonei de vizibilitate. Fiecarei furnici ii corespunde o subzona de vizibilitate
+care corespunde razei de vizibilitate. Dupa ce vom determina toate aceste
+subzone este clar ca la un numar mare de furnici ele se vor intersecta. Vom
+elimina aceste zone care se intersecteaza. In cele din urma metoda
+exploreNear() determina cele mai aproapiate furnici de margine si le trimite
+catre exterior.
+
+--------
+Etapa 2:
+-------- 
+Pentru acesta etapa am facut cateva refactorizari de cod (am realizat functii
+pentru secventele de cod ce se repetau in anumite parti ale proiectului). Am
+pastrat partea de colectare a mancarii si de explorare. Cu ajutorul explorarii
+deja implementate furnicile reusesc sa se distribuie destul de uniform pe
+harta in aproximativ 200 de ture. Acest lucru le face vulnerabile la furnicile
+inamice pentru ca vor fi izolate si pot muri destul de usor, insa distributia
+ne asigura o privire de asamblu asupra hartii. Strategia pe care am aborat-o
+este una de tip kamikaze: o data descoperit un musuroi inamic se trimit toate
+furnicile care nu sunt aganjate intr-o misiune de tip colectare manacare (FOOD)
+sau explorare catre el. Cel mai probabil furnicile inamice vor fi coplesite de
+numarul de furnici care vin din partea noastra si vor ceda in cele din urma ia
+noi vom reusi sa cucerim musuroiul. Pentru a trimite toate furnicile care nu
+colecteaza mancare sau exploreaza am pornit un BSF de la primul musuroi
+descoperit pe toata harta. Acesta nu este ineficient din punct vedere al
+complexitatii deoarece efectuam un singur algoritm Breath-First Search pentru
+un sigur musuroi (complexitate O(n*m), n - numarul de linii si m - numarul de
+coloane ale hartii. Daca BFS-ul gaseste la o iteratie o furnica libera
+(neangajata in nici un tip de misiune) si aceasta nu poate sa se duca catre
+musuroi deoarece in directia dinspre care vine BFS-ul este un Square ocupat
+atunci furnica ramane nemarcata in iteratie respectiva. Urmeaza ca intr-o
+iteratie urmatoare sa fie gasita din nou si sa fie directionata tot spre
+musuroi insa printr-o ruta alternativa valida. Desi drumul va fi mai lung
+furnica nu ramane fara ocupatie.    
+
+Am reusit sa facem doua variante de atac kamikaze al furnicilor: dispersat si
+nedispersat. In cazul dispersat furnicile se misca compact iar in cel
+nedisperat acestea se misca la o oarecare distanta una fata de alta. De obicei
+distanta este de o casuta intre o furnica. Varianta dispersata este realizata
+prin faptul ca atunci cand facem o mutare a unei furnici nu se face o
+actualizare in gridul de squareuri. Adica casuta pe care era furnica anterior
+nu este marcata ca fiind libera dupa ce s-a facut mutarea in cadrul unei ture
+desi ar trebui. Din experimente s-a dovedit ca varianta dispersiva este mai
+eficienta la atac.
+
+E important ca explorarea sa fie pusa inaintea atacului de tip kamikaze,
+pentru ca fara explorare nu s-ar mai gasi la fel de multa mancare si in urma
+unui atac la inamic dupa reducerea considerabila a numarului furnicilor
+proprii ar fi mult mai greu sa ne crestem numarul.
+
+
+-------------   
+Bibliografie:
+-------------
+http://xathis.com/posts/ai-challenge-2011-ants.html
+http://trevoroakes.com/blog/2011/12/23/greenteas-2nd-place-entry-postmortem-translated-by-hand/
+http://en.wikipedia.org/wiki/Breadth-first_search
